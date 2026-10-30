@@ -1,0 +1,43 @@
+{
+  "name": "tool-dev-mini-notes",
+  "display_name": "Mini Notes Summarizer",
+  "version": "1.0.0",
+  "description": "Summarize notes through the Anna host's LLM sampling capability.",
+  "host_capabilities": ["llm.sample"],
+  "tools": [
+    {
+      "name": "summarize",
+      "description": "Summarize the current notes using the host LLM. No model credentials are required by this tool.",
+      "timeout": 60,
+      "parameters": [
+        {
+          "name": "notes",
+          "type": "array",
+          "description": "Between 1 and 100 notes in their creation order. Each note has id, content (1–4000 characters), and a positive integer order.",
+          "required": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "content": { "type": "string" },
+              "order": { "type": "integer" },
+              "createdAt": { "type": "string" }
+            },
+            "required": ["id", "content", "order"]
+          }
+        }
+      ]
+    }
+  ],
+  "runtime": {
+    "type": "node",
+    "min_version": "22.0.0",
+    "binary": {
+      "entrypoint": {
+        "default": "bin/mini-notes-tool",
+        "windows-x86_64": "bin/mini-notes-tool.exe"
+      },
+      "permissions": { "bin/mini-notes-tool": "0o755" }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "tool_id": "tool-dev-mini-notes",
+  "type": "node",
+  "command": ["node", "dev-launcher.cjs"],
+  "_comment": "The pinned App harness omits initialize. This dev-only launcher negotiates v2 before transparently forwarding messages; release binaries run index.cjs directly.",
+  "enabled": true
+}

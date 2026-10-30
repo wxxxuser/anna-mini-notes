@@ -1,0 +1,1 @@
+{"ns":"sampling","method":"createMessage","result":{"role":"assistant","content":{"type":"text","text":"【本地测试 fixture】待办分为客户沟通、产品修复和内容策划：明天跟进客户，修复登录问题，并整理 Workshop 想法。"},"model":"mini-notes-fixture-v1","stopReason":"endTurn"}}

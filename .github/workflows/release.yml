@@ -1,0 +1,130 @@
+name: Release Executa binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: executa-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.metadata.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+      - run: npm ci
+      - name: Check matching release versions
+        id: metadata
+        run: node scripts/release-metadata.mjs
+      - name: Prevent publishing different code under an existing tag
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+        with:
+          script: |
+            let object;
+            try {
+              const response = await github.rest.git.getRef({
+                ...context.repo, ref: `tags/${process.env.RELEASE_TAG}`,
+              });
+              object = response.data.object;
+            } catch (error) {
+              if (error.status === 404) return; // Manual dispatch can create its first release tag.
+              throw error;
+            }
+            for (let depth = 0; object.type === 'tag' && depth < 8; depth++) {
+              const response = await github.rest.git.getTag({ ...context.repo, tag_sha: object.sha });
+              object = response.data.object;
+            }
+            if (object.type !== 'commit' || object.sha !== context.sha) {
+              core.setFailed('This version tag already points to different code. Bump both versions before releasing.');
+            }
+      - run: npm run build
+      - run: npm run validate
+      - run: npm run test:protocol
+      - run: npm run test:contracts
+      - run: npm run test:frontend
+      - run: npm run test:sampling
+      - run: npm run setup:runtime
+      - run: npm run test:harness
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Explicit architectures; macos-15 is Apple Silicon, not Intel.
+          - runner: macos-15
+            platform: darwin-arm64
+            arch: arm64
+          - runner: macos-15-intel
+            platform: darwin-x86_64
+            arch: x64
+          - runner: windows-2022
+            platform: windows-x86_64
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          architecture: ${{ matrix.arch }}
+          cache: npm
+      - run: npm ci
+      - name: Build, smoke-test, archive, extract, and smoke-test again
+        run: npm run package:binary
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: executa-${{ matrix.platform }}
+          path: releases/mini-notes-*-${{ matrix.platform }}.*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: executa-*
+          path: releases
+          merge-multiple: true
+      - name: Require all three platform archives
+        run: node scripts/release-metadata.mjs --check-assets
+      # This step intentionally runs for BOTH tag pushes and manual dispatch.
+      # Actions artifacts above only transfer files between jobs.
+      - name: Publish all three archives as GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.verify.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Mini Notes ${{ needs.verify.outputs.tag }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            releases/mini-notes-*-darwin-arm64.tar.gz
+            releases/mini-notes-*-darwin-x86_64.tar.gz
+            releases/mini-notes-*-windows-x86_64.zip
