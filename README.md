@@ -2,6 +2,8 @@
 
 一个本地运行的 Anna 笔记应用。支持创建、查看、删除笔记；总结通过 Executa 的 reverse JSON-RPC sampling 借用宿主模型。前端为 React + TypeScript + Vite，工具为只依赖 Node.js 内置模块的独立进程。
 
+交付版本：[v1.0.0 三平台 Release](https://github.com/wxxxuser/anna-mini-notes/releases/tag/v1.0.0)。[发布工作流](https://github.com/wxxxuser/anna-mini-notes/actions/runs/41009894336)已于 2026-10-30 通过构建、严格校验、27 项测试、独立 CLI sampling 及三平台归档前后 smoke。仓库保持私有，审阅者需拥有访问权限；资产校验值见[验收记录](docs/ACCEPTANCE.md)。
+
 ```text
 App iframe → AnnaAppRuntime.connect()
            ├─ anna.storage.get / set → Host storage
@@ -77,7 +79,7 @@ app.json                App 本地名称与版本信息
 dist/                   构建输出，忽略提交
 releases/               本机二进制包，忽略提交
 artifacts/              测试生成的证据，忽略提交
-docs/ACCEPTANCE.md       逐项验收记录与未完成项
+docs/ACCEPTANCE.md       逐项验收记录与发布证据
 ```
 
 ## 验证 App 与 Host storage
@@ -199,7 +201,7 @@ bin/mini-notes-tool       # Windows 为 mini-notes-tool.exe
 
 根 manifest 的 `runtime.binary.entrypoint` 指向上述入口，`permissions` 声明可执行权限。运行包不需要额外安装 Node.js。脚本在归档前和解包后都启动真实二进制，执行 initialize、describe、invoke 与反向 sampling smoke；成功后才替换最终文件。macOS 的可执行位会被检查。不做代码签名、公证或 Authenticode。
 
-单个平台本机打包不等于三平台都已实测。三平台原生构建交给下述 workflow。
+v1.0.0 已通过下述 workflow 完成三平台原生构建与二进制实际执行；本机命令只生成当前平台对应的包。
 
 ## GitHub Release
 
